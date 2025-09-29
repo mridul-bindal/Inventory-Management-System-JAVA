@@ -1,0 +1,145 @@
+/* RegisterPage.css */
+
+/* Container */
+.reg-container {
+  min-height: 100vh;
+  background: #f1f5f9;           /* slate-100 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+/* Wrapper (card) */
+.reg-wrapper {
+  width: 100%;
+  max-width: 1100px;
+  background: #ffffff;
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* image | form */
+  gap: 0;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+/* Left (illustration) */
+.reg-left {
+  background: white;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.reg-image {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Right (form) */
+.reg-right {
+  padding: 40px;
+  background: #fafbfc;
+}
+.reg-logo {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  background: #67e8f9; /* cyan-300 */
+}
+.reg-title {
+  margin-top: 20px;
+  font-size: 26px;
+  font-weight: 700;
+}
+.reg-subtitle h2 {
+  margin-top: 8px;
+  font-size: 14px;
+  font-weight: 700;
+}
+.reg-subtitle p {
+  margin-top: 6px;
+  font-size: 13px;
+  color: #64748b; /* slate-500 */
+}
+
+/* Form */
+.reg-form {
+  margin-top: 18px;
+}
+.reg-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 14px;
+}
+.reg-row.single {
+  grid-template-columns: 1fr;
+}
+.reg-field label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.reg-field input {
+  width: 93%;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;     /* slate-300 */
+  border-radius: 8px;
+  outline: none;
+  font-size: 14px;
+  background: #fff;
+}
+.reg-field input:focus {
+  border-color: #94a3b8;         /* slate-400 */
+  box-shadow: 0 0 0 3px rgba(148,163,184,0.2);
+}
+
+/* Checkbox + terms */
+.reg-check {
+  display: block;
+  margin-top: 12px;
+  font-size: 13px;
+}
+.reg-check a {
+  color: #1d4ed8;                /* blue-700 */
+  text-decoration: none;
+}
+.reg-check a:hover { text-decoration: underline; }
+
+/* Submit button */
+.reg-button {
+  margin-top: 16px;
+  width: 160px;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 9999px;
+  background: #0f172a;           /* slate-900 */
+  color: #ffffff;
+  font-weight: 600;
+  cursor: pointer;
+}
+.reg-button:hover { filter: brightness(1.05); }
+
+/* Bottom link */
+.reg-login {
+  margin-top: 12px;
+  font-size: 13px;
+}
+.reg-login a {
+  color: #1d4ed8;
+  text-decoration: none;
+}
+.reg-login a:hover { text-decoration: underline; }
+
+/* Responsive */
+@media (max-width: 900px) {
+  .reg-wrapper {
+    grid-template-columns: 1fr;  /* stack */
+  }
+  .reg-left {
+    order: -1;                   /* show image on top */
+  }
+}
+

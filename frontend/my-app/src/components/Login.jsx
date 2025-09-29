@@ -1,5 +1,5 @@
-// LoginPage.jsx
 import React from "react";
+import { Link } from "react-router-dom";
 import "../styles/LoginPage.css";
 
 function LoginPage() {
@@ -30,11 +30,20 @@ function LoginPage() {
 
           <button className="login-button">Login</button>
 
-          <p className="register-text">Not registered yet? <a href="#" className="register-link">Create a new account</a></p>
+          <p className="register-text">
+            Not registered yet?{" "}
+            <Link to="/register" className="register-link">
+              Create a new account
+            </Link>
+          </p>
         </div>
 
         <div className="login-right">
-          <img src="/loginpage/inventory-management-system.webp" alt="Illustration" className="login-image" />
+          <img
+            src="/loginpage/inventory-management-system.webp"
+            alt="Illustration"
+            className="login-image"
+          />
         </div>
       </div>
     </div>
