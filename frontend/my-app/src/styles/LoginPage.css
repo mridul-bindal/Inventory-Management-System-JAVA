@@ -163,3 +163,9 @@
     order: -1; /* image on top for mobile */        
   }
 }
+
+.Login-redirection{
+  color: white;
+  text-decoration: none;
+}
+

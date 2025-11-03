@@ -1,0 +1,151 @@
+/* Orders.css - keep names specific to avoid colliding with your global styles */
+
+/* layout shell - expects Nav to be positioned on left already */
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* main area contains Header + page content */
+.main-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #f8fafc;
+}
+
+/* page container */
+.container {
+  padding: 24px 36px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* top bar */
+.orders-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.orders-top h2 {
+  margin: 0;
+  font-size: 24px;
+  color: #111827;
+}
+
+/* action buttons */
+.orders-actions { display:flex; gap:12px; align-items:center; }
+.btn-outline {
+  background: transparent;
+  border: 2px solid #7c3aed; /* purple outline */
+  color: #6b21a8;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.btn-primary {
+  background: #6b21a8;
+  color: #fff;
+  padding: 9px 16px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+}
+
+/* controls row */
+.orders-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+/* search */
+.search-wrap input[type="search"] {
+  width: 360px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #e6edf3;
+  background: #fff;
+  outline: none;
+  box-shadow: none;
+}
+
+/* filters */
+.filters {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.filter-item { display:flex; flex-direction: column; gap:6px; font-size:12px; }
+.filter-item select {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #e6edf3;
+  background: #fff;
+}
+.btn-filter {
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #e6edf3;
+  background: #fff;
+  cursor: pointer;
+}
+
+/* table wrap */
+.orders-table-wrap {
+  background: #fff;
+  border-radius: 6px;
+  padding: 12px;
+  border: 1px solid rgba(15,23,42,0.04);
+}
+
+/* orders table */
+.orders-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: inherit;
+}
+.orders-table thead th {
+  text-align: left;
+  padding: 14px 12px;
+  font-size: 13px;
+  color: #374151;
+  border-bottom: 1px solid #e6edf3;
+}
+.orders-table tbody td {
+  padding: 14px 12px;
+  font-size: 14px;
+  color: #111827;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+/* status badges */
+.status-badge {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+}
+.status-completed { background: linear-gradient(90deg,#34d399,#10b981); } /* green */
+.status-pending { background: linear-gradient(90deg,#86efac,#bbf7d0); color:#064e3b; } /* light green */
+
+/* empty state row */
+.no-results td {
+  text-align: center;
+  padding: 28px;
+  color: #6b7280;
+}
+
+/* responsive */
+@media (max-width: 900px) {
+  .search-wrap input[type="search"] { width: 100%; }
+  .filters { flex-wrap: wrap; }
+  .orders-top { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .orders-actions { width: 100%; justify-content: flex-start; }
+}

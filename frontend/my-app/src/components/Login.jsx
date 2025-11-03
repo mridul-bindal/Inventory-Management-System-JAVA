@@ -28,7 +28,11 @@ function LoginPage() {
             <a href="#" className="forgot-link">Forgot password?</a>
           </div>
 
-          <button className="login-button">Login</button>
+          <button className="login-button">
+            <Link to="/Dashboard" className="Login-redirection">
+              Login
+            </Link>
+          </button>
 
           <p className="register-text">
             Not registered yet?{" "}
