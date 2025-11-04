@@ -4,6 +4,7 @@ import "../styles/Orders.css"; // keep general layout + cards + tables
 
 import Nav from "../staticComponents/NavBar";
 import Header from "../staticComponents/Header";
+import { fetchOrders, createOrder, updateOrder, deleteOrder, changeOrderQty } from "../api/orders";
 
 const STORAGE_KEY = "ims_orders_v1";
 
@@ -34,6 +35,9 @@ export default function Orders() {
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [paymentFilter, setPaymentFilter] = useState("All");
+  // loading and error states
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   // new-order form state
   const [formOpen, setFormOpen] = useState(false);
@@ -47,7 +51,26 @@ export default function Orders() {
   const [payment, setPayment] = useState("Cash");
   const [status, setStatus] = useState("Pending");
 
-  // persist to localStorage when orders change
+  // Load orders from API on mount
+  useEffect(() => {
+    const loadOrders = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await fetchOrders({ q: "", status: "All", payment: "All" });
+        setOrders(data);
+      } catch (err) {
+        setError(err.message);
+        // Fallback to localStorage if API fails
+        setOrders(readOrders());
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadOrders();
+  }, []);
+
+  // persist to localStorage when orders change (for offline fallback)
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
   }, [orders]);
@@ -66,7 +89,7 @@ export default function Orders() {
   }
 
   // add order
-  function handleAddOrder(e) {
+  async function handleAddOrder(e) {
     e.preventDefault();
     if (!customer.trim()) return alert("Please enter customer name");
     if (!destination.trim()) return alert("Please enter destination");
@@ -86,17 +109,27 @@ export default function Orders() {
       payment,
       status,
     };
-    setOrders(prev => [newOrder, ...prev]);
-    resetForm();
-    setFormOpen(false);
+    try {
+      await createOrder(newOrder);
+      setOrders(prev => [newOrder, ...prev]);
+      resetForm();
+      setFormOpen(false);
+    } catch (err) {
+      alert("Failed to create order: " + err.message);
+    }
   }
 
-  function handleDelete(id) {
+  async function handleDelete(id) {
     if (!confirm("Delete this order?")) return;
-    setOrders(prev => prev.filter(o => o.id !== id));
+    try {
+      await deleteOrder(id);
+      setOrders(prev => prev.filter(o => o.id !== id));
+    } catch (err) {
+      alert("Failed to delete order: " + err.message);
+    }
   }
 
-  function handleEdit(id) {
+  async function handleEdit(id) {
     const o = orders.find(x => x.id === id);
     if (!o) return;
     const newCustomer = prompt("Customer name", o.customer);
@@ -107,11 +140,28 @@ export default function Orders() {
     const newStatus = prompt("Status (Pending/Completed)", o.status) || o.status;
     const newCostPer = prompt("Cost per piece (numeric)", String(o.costPer || 0));
     if (newCostPer === null) return;
-    setOrders(prev => prev.map(x => x.id === id ? { ...x, customer: newCustomer, destination: newDestination, payment: newPayment, status: newStatus, costPer: Number(newCostPer) || 0 } : x));
+    const updatedOrder = { ...o, customer: newCustomer, destination: newDestination, payment: newPayment, status: newStatus, costPer: Number(newCostPer) || 0 };
+    try {
+      await updateOrder(id, updatedOrder);
+      setOrders(prev => prev.map(x => x.id === id ? updatedOrder : x));
+    } catch (err) {
+      alert("Failed to update order: " + err.message);
+    }
   }
 
-  function changeItems(id, delta) {
-    setOrders(prev => prev.map(o => o.id === id ? { ...o, items: Math.max(0, Number(o.items) + Number(delta)) } : o));
+  async function changeItems(id, delta) {
+    const order = orders.find(o => o.id === id);
+    if (!order) return;
+    const newItems = Math.max(0, Number(order.items) + Number(delta));
+    try {
+      // backend expects item index and delta (change amount). The frontend stores only
+      // a total items count (items); most demo orders use a single item entry, so
+      // we send index 0 and the delta to increment/decrement quantity on server.
+      await changeOrderQty(id, 0, delta);
+      setOrders(prev => prev.map(o => o.id === id ? { ...o, items: newItems } : o));
+    } catch (err) {
+      alert("Failed to update quantity: " + err.message);
+    }
   }
 
   // filtered list

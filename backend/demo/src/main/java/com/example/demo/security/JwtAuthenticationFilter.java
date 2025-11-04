@@ -42,21 +42,30 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         try {
             String token = resolveToken(request);
+            System.out.println("JWT Filter - Request path: " + request.getRequestURI());
+            System.out.println("JWT Filter - Token received: " + (token != null ? "yes" : "no"));
+            
             if (token != null) {
                 String userId = jwtUtil.getSubject(token);
+                System.out.println("JWT Filter - User ID from token: " + userId);
+                
                 if (userId != null) {
                     Optional<User> ou = userRepository.findById(userId);
+                    System.out.println("JWT Filter - User found in DB: " + ou.isPresent());
+                    
                     if (ou.isPresent()) {
                         User u = ou.get();
                         List<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority(u.getRole()));
                         UsernamePasswordAuthenticationToken auth =
                                 new UsernamePasswordAuthenticationToken(u.getId(), null, authorities);
                         SecurityContextHolder.getContext().setAuthentication(auth);
+                        System.out.println("JWT Filter - Authentication set for user: " + u.getId() + " with role: " + u.getRole());
                     }
                 }
             }
         } catch (Exception ex) {
-            // token invalid or user not found — proceed unauthenticated
+            System.err.println("JWT Filter - Authentication error: " + ex.getMessage());
+            ex.printStackTrace();
         }
 
         filterChain.doFilter(request, response);
