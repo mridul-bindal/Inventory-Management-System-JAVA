@@ -1,11 +1,10 @@
-package com.example.demo.Repository;
+package com.example.demo.repository;
 
+import com.example.demo.model.User;
 import org.springframework.data.mongodb.repository.MongoRepository;
-import org.springframework.stereotype.Repository;
-import com.example.demo.Domain.User;
+import java.util.Optional;
 
-@Repository
-public interface UserRepository extends MongoRepository<User,String>
-{
-	// Define custom queries or use the default CRUD operations provided by MongoRepository
+public interface UserRepository extends MongoRepository<User, String> {
+    Optional<User> findByEmail(String email);
+    boolean existsByEmail(String email);
 }

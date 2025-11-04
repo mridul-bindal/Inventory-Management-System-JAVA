@@ -1,8 +1,52 @@
-import React from "react";
-import { Link } from "react-router-dom";
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import "../styles/LoginPage.css";
 
 function LoginPage() {
+  const navigate = useNavigate();
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    rememberMe: false
+  });
+
+  const handleInputChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await fetch('http://localhost:9000/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Store the JWT token
+        localStorage.setItem('token', data.token);
+        navigate('/Dashboard');
+      } else {
+        const errorData = await response.json();
+        alert(errorData.message || 'Login failed');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      alert('Login failed. Please try again.');
+    }
+  };
+
   return (
     <div className="login-container">
       <div className="login-wrapper">
@@ -15,24 +59,46 @@ function LoginPage() {
             Sign in with Google <span className="google-icon"></span>
           </button>
 
-          <label className="input-label">Email*</label>
-          <input type="email" placeholder="Enter your email" className="input-field" />
+          <form onSubmit={handleSubmit}>
+            <label className="input-label">Email*</label>
+            <input 
+              type="email" 
+              name="email"
+              value={formData.email}
+              onChange={handleInputChange}
+              placeholder="Enter your email" 
+              className="input-field"
+              required 
+            />
 
-          <label className="input-label">Password*</label>
-          <input type="password" placeholder="minimum 8 characters" className="input-field" />
+            <label className="input-label">Password*</label>
+            <input 
+              type="password" 
+              name="password"
+              value={formData.password}
+              onChange={handleInputChange}
+              placeholder="minimum 8 characters" 
+              className="input-field"
+              required 
+            />
 
-          <div className="remember-forgot">
-            <label>
-              <input type="checkbox" /> Remember me
-            </label>
-            <a href="#" className="forgot-link">Forgot password?</a>
-          </div>
+            <div className="remember-forgot">
+              <label>
+                <input 
+                  type="checkbox" 
+                  name="rememberMe"
+                  checked={formData.rememberMe}
+                  onChange={handleInputChange}
+                /> 
+                Remember me
+              </label>
+              <a href="#" className="forgot-link">Forgot password?</a>
+            </div>
 
-          <button className="login-button">
-            <Link to="/Dashboard" className="Login-redirection">
+            <button type="submit" className="login-button">
               Login
-            </Link>
-          </button>
+            </button>
+          </form>
 
           <p className="register-text">
             Not registered yet?{" "}
