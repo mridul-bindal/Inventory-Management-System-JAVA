@@ -44,15 +44,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String token = resolveToken(request);
             System.out.println("JWT Filter - Request path: " + request.getRequestURI());
             System.out.println("JWT Filter - Token received: " + (token != null ? "yes" : "no"));
-            
+
             if (token != null) {
+                // Mask token in logs for privacy while keeping part of it for tracing
+                String masked = maskToken(token);
+                System.out.println("JWT Filter - Token (masked): " + masked);
+
                 String userId = jwtUtil.getSubject(token);
                 System.out.println("JWT Filter - User ID from token: " + userId);
-                
+
                 if (userId != null) {
                     Optional<User> ou = userRepository.findById(userId);
-                    System.out.println("JWT Filter - User found in DB: " + ou.isPresent());
-                    
+                    boolean found = ou.isPresent();
+                    System.out.println("JWT Filter - User found in DB: " + found + (found ? " (id ok)" : " (not found)"));
+
                     if (ou.isPresent()) {
                         User u = ou.get();
                         List<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority(u.getRole()));
@@ -60,7 +65,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                 new UsernamePasswordAuthenticationToken(u.getId(), null, authorities);
                         SecurityContextHolder.getContext().setAuthentication(auth);
                         System.out.println("JWT Filter - Authentication set for user: " + u.getId() + " with role: " + u.getRole());
+                    } else {
+                        System.out.println("JWT Filter - No user record matched token subject: " + userId);
                     }
+                } else {
+                    System.out.println("JWT Filter - Token subject null (token invalid or expired)");
                 }
             }
         } catch (Exception ex) {
@@ -69,5 +78,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private String maskToken(String token) {
+        if (token == null) return null;
+        int len = token.length();
+        if (len <= 14) return token;
+        String start = token.substring(0, 8);
+        String end = token.substring(len - 6);
+        return start + "..." + end;
     }
 }

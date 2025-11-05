@@ -1,34 +1,48 @@
-// Products.jsx
-import React, { useEffect, useState } from "react";
-import "../styles/Products.css"; // keep general layout + cards + charts + tables
-
+import React, { useEffect, useState, useRef } from "react";
+import "../styles/Products.css";
 import Nav from "../staticComponents/NavBar";
 import Header from "../staticComponents/Header";
-
-const STORAGE_KEY = "ims_products_v1";
-
-function readProducts() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
+import { fetchProducts, createProduct, updateProduct, deleteProduct, changeProductQuantity } from "../api/products";
 
 export default function Products() {
-  const [products, setProducts] = useState(readProducts);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [name, setName] = useState("");
   const [desc, setDesc] = useState("");
   const [qty, setQty] = useState("");
   const [imageFile, setImageFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [query, setQuery] = useState("");
+  const fileInputRef = useRef(null);
 
+  // fetch products from API
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
-  }, [products]);
+    let mounted = true;
+    async function loadProducts() {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await fetchProducts(query);
+        if (mounted) {
+          setProducts(data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch products:", err);
+        if (mounted) {
+          setError(err.message);
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    }
+    loadProducts();
+    return () => (mounted = false);
+  }, [query]);
 
+  // preview image when user selects a file
   useEffect(() => {
     if (!imageFile) {
       setPreview(null);
@@ -45,51 +59,99 @@ export default function Products() {
     setQty("");
     setImageFile(null);
     setPreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
-  function handleAdd(e) {
+  // ---------- API actions ----------
+
+  // ---------- UI actions ----------
+  async function handleAdd(e) {
     e.preventDefault();
     if (!name.trim()) return alert("Please enter product name");
-    const initialQty = Number(qty);
+    const initialQty = Number(qty === "" ? 0 : qty);
     if (!Number.isFinite(initialQty) || initialQty < 0) return alert("Enter valid quantity");
-    const newProduct = {
-      id: Date.now(),
+
+    const optimisticProduct = {
+      id: `temp-${Date.now()}`,
       name: name.trim(),
       description: desc.trim(),
       qty: initialQty,
-      createdAt: new Date().toISOString(),
-      image: preview || null // store base64 preview; small apps OK
+      image: preview || null,
+      createdAt: new Date().toISOString()
     };
-    setProducts((p) => [newProduct, ...p]);
+
+    setProducts((p) => [optimisticProduct, ...p]);
     resetForm();
+
+    try {
+      const created = await createProduct({
+        name: optimisticProduct.name,
+        description: optimisticProduct.description,
+        qty: initialQty,
+        imageFile
+      });
+      setProducts((p) => [created, ...p.filter((x) => x.id !== optimisticProduct.id)]);
+    } catch (err) {
+      setProducts((p) => p.filter((x) => x.id !== optimisticProduct.id));
+      alert("Failed to create product: " + err.message);
+    }
   }
 
-  function handleDelete(id) {
+  async function handleDelete(id) {
     if (!confirm("Delete this product?")) return;
+    const prev = products;
     setProducts((p) => p.filter((x) => x.id !== id));
+    try {
+      await deleteProduct(id);
+    } catch (err) {
+      setProducts(prev);
+      alert("Failed to delete product: " + err.message);
+    }
   }
 
-  function changeQty(id, delta) {
-    setProducts((p) =>
-      p.map((it) => (it.id === id ? { ...it, qty: Math.max(0, Number(it.qty) + delta) } : it))
-    );
+  async function changeQty(id, delta) {
+    const prev = products;
+    setProducts((p) => p.map((it) => (it.id === id ? { ...it, qty: Math.max(0, Number(it.qty) + delta) } : it)));
+    try {
+      const updated = await changeProductQuantity(id, delta);
+      setProducts((p) => p.map((it) => (it.id === id ? updated : it)));
+    } catch (err) {
+      setProducts(prev);
+      alert("Failed to change quantity: " + err.message);
+    }
   }
 
-  function handleEdit(id) {
+  async function handleEdit(id) {
     const it = products.find((p) => p.id === id);
     if (!it) return;
     const newName = prompt("Product name", it.name);
     if (newName === null) return;
     const newDesc = prompt("Description", it.description);
     if (newDesc === null) return;
+
+    const prev = products;
     setProducts((p) => p.map((x) => (x.id === id ? { ...x, name: newName, description: newDesc } : x)));
+
+    try {
+      const updated = await updateProduct(id, { name: newName, description: newDesc });
+      setProducts((p) => p.map((x) => (x.id === id ? updated : x)));
+    } catch (err) {
+      setProducts(prev);
+      alert("Failed to update product: " + err.message);
+    }
+  }
+
+  // file change handler for form input
+  function onFileChange(e) {
+    const f = e.target.files?.[0] || null;
+    setImageFile(f);
   }
 
   const filtered = products.filter(
     (p) =>
       query.trim() === "" ||
-      p.name.toLowerCase().includes(query.toLowerCase()) ||
-      p.description.toLowerCase().includes(query.toLowerCase())
+      (p.name && p.name.toLowerCase().includes(query.toLowerCase())) ||
+      (p.description && p.description.toLowerCase().includes(query.toLowerCase()))
   );
 
   return (
@@ -134,9 +196,10 @@ export default function Products() {
 
                 <label className="pf-label">Photo</label>
                 <input
+                  ref={fileInputRef}
                   type="file"
                   accept="image/*"
-                  onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+                  onChange={onFileChange}
                   className="pf-file"
                 />
                 {preview && (
@@ -154,7 +217,7 @@ export default function Products() {
 
             {/* Right: Product list */}
             <div className="product-list-card">
-              <h3 className="pl-title">Your products</h3>
+              <h3 className="pl-title">Your products {loading ? "(loading...)" : ""}</h3>
 
               {filtered.length === 0 ? (
                 <div className="empty">No products yet. Add one using the form.</div>
@@ -174,7 +237,11 @@ export default function Products() {
                       {filtered.map((p) => (
                         <tr key={p.id}>
                           <td className="pt-photo">
-                            {p.image ? <img src={p.image} alt={p.name} /> : <div className="photo-placeholder">No photo</div>}
+                            {p.imageBase64 || p.image ? (
+                              <img src={p.imageBase64 || p.image} alt={p.name} />
+                            ) : (
+                              <div className="photo-placeholder">No photo</div>
+                            )}
                           </td>
                           <td className="pt-name">{p.name}</td>
                           <td className="pt-desc">{p.description}</td>
