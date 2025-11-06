@@ -1,22 +1,89 @@
 const API_BASE = 'http://localhost:8080/api/products';
 
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('token');
-  return {
-    ...(token && { 'Authorization': `Bearer ${token}` })
-  };
+const getAuthToken = () => {
+  return localStorage.getItem('token');
 };
 
-export const fetchProducts = async (query = '') => {
-  const params = new URLSearchParams();
-  if (query) params.append('q', query);
-  
-  const response = await fetch(`${API_BASE}?${params}`, {
-    headers: getAuthHeaders()
-  });
-  if (!response.ok) throw new Error('Failed to fetch products');
-  return response.json();
+const getJsonHeaders = () => {
+  const token = getAuthToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
 };
+
+const getFormDataHeaders = () => {
+  // Don't set Content-Type for FormData - browser will set it with boundary
+  const token = getAuthToken();
+  const headers = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+};
+
+const handleResponse = async (res) => {
+  if (res.status === 403 || res.status === 401) {
+    const errorMsg = res.status === 403 ? 'Access forbidden - Please log in' : 'Unauthorized - Please log in';
+    throw new Error(errorMsg);
+  }
+  
+  const text = await res.text();
+  let json = null;
+  try { 
+    json = text ? JSON.parse(text) : null; 
+  } catch(e) { 
+    console.error('Failed to parse response as JSON:', e, 'Response text:', text);
+  }
+
+  if (!res.ok) {
+    const msg = json?.message || json?.error || text || res.statusText;
+    throw new Error(msg || `HTTP ${res.status}`);
+  }
+  
+  if (json === null && text) {
+    throw new Error('Invalid response format');
+  }
+  
+  return json || [];
+};
+
+
+export const fetchProducts = async (query = '') => {
+  try {
+    const params = new URLSearchParams();
+    if (query && query.trim() !== '') params.append('q', query.trim());
+    const url = params.toString() ? `${API_BASE}?${params.toString()}` : API_BASE;
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: getJsonHeaders()
+    });
+    
+    const data = await handleResponse(response);
+    return Array.isArray(data) ? data : [];
+  } catch (error) {
+    console.error('Error fetching products:', error);
+    // If unauthorized, clear token and redirect to login
+    if (error.message.includes('403') || error.message.includes('401') || error.message.includes('forbidden')) {
+      localStorage.removeItem('token');
+      window.location.href = '/';
+    }
+    throw error;
+  }
+};
+
+export const getProductById = async (id) => {
+  const response = await fetch(`${API_BASE}/${encodeURIComponent(id)}`, {
+    headers: getJsonHeaders()
+  });
+  return handleResponse(response);
+};
+
 
 export const createProduct = async (productData) => {
   const formData = new FormData();
@@ -27,11 +94,10 @@ export const createProduct = async (productData) => {
 
   const response = await fetch(API_BASE, {
     method: 'POST',
-    headers: getAuthHeaders(),
+    headers: getFormDataHeaders(),
     body: formData
   });
-  if (!response.ok) throw new Error('Failed to create product');
-  return response.json();
+  return handleResponse(response);
 };
 
 export const updateProduct = async (id, productData) => {
@@ -43,26 +109,27 @@ export const updateProduct = async (id, productData) => {
 
   const response = await fetch(`${API_BASE}/${id}`, {
     method: 'PUT',
-    headers: getAuthHeaders(),
+    headers: getFormDataHeaders(),
     body: formData
   });
-  if (!response.ok) throw new Error('Failed to update product');
-  return response.json();
+  return handleResponse(response);
 };
 
 export const deleteProduct = async (id) => {
   const response = await fetch(`${API_BASE}/${id}`, {
     method: 'DELETE',
-    headers: getAuthHeaders()
+    headers: getJsonHeaders()
   });
-  if (!response.ok) throw new Error('Failed to delete product');
+  if (!response.ok) {
+    const error = await handleResponse(response).catch(() => null);
+    throw new Error(error?.message || 'Failed to delete product');
+  }
 };
 
 export const changeProductQuantity = async (id, delta) => {
   const response = await fetch(`${API_BASE}/${id}/qty?delta=${delta}`, {
     method: 'PATCH',
-    headers: getAuthHeaders()
+    headers: getJsonHeaders()
   });
-  if (!response.ok) throw new Error('Failed to update quantity');
-  return response.json();
+  return handleResponse(response);
 };

@@ -1,8 +1,12 @@
 package com.example.demo.products.controller;
 
+import com.example.demo.model.User;
 import com.example.demo.products.dto.ProductResponse;
 import com.example.demo.products.model.Product;
 import com.example.demo.products.service.ProductService;
+import com.example.demo.repository.UserRepository;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -15,9 +19,22 @@ import java.util.stream.Collectors;
 public class ProductController {
 
     private final ProductService svc;
+    private final UserRepository userRepository;
 
-    public ProductController(ProductService svc) {
+    public ProductController(ProductService svc, UserRepository userRepository) {
         this.svc = svc;
+        this.userRepository = userRepository;
+    }
+
+    private String getCurrentUserEmail() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() != null) {
+            String userId = auth.getPrincipal().toString(); // This is the user ID from JWT
+            User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+            return user.getEmail();
+        }
+        throw new RuntimeException("User not authenticated");
     }
 
     private ProductResponse toDto(Product p) {
@@ -31,14 +48,26 @@ public class ProductController {
         return r;
     }
 
-    @GetMapping("/q")
-    public List<ProductResponse> getAll() {
-        return svc.getAllProducts().stream().map(this::toDto).collect(Collectors.toList());
+    // @GetMapping("/")
+    // public List<ProductResponse> getAll() {
+    //     return svc.getAllProducts().stream().map(this::toDto).collect(Collectors.toList());
+    // }
+
+    @GetMapping
+    public List<ProductResponse> getAll(@RequestParam(required = false) String q) {
+        String email = getCurrentUserEmail();
+        // Return only products for the current user
+        List<Product> products = (q == null || q.isBlank()) 
+            ? svc.getAllProductsByEmail(email) 
+            : svc.searchProducts(email, q);
+        return products.stream().map(this::toDto).collect(Collectors.toList());
     }
+
 
     @GetMapping("/{id}")
     public ProductResponse getOne(@PathVariable String id) {
-        return toDto(svc.getProductById(id));
+        String email = getCurrentUserEmail();
+        return toDto(svc.getProductByIdAndEmail(id, email));
     }
 
     @PostMapping(consumes = {"multipart/form-data"})
@@ -47,7 +76,8 @@ public class ProductController {
             @RequestParam(required = false) String description,
             @RequestParam(required = false) Integer qty,
             @RequestPart(required = false) MultipartFile image) throws Exception {
-        return toDto(svc.createProduct(name, description, qty, image));
+        String email = getCurrentUserEmail();
+        return toDto(svc.createProduct(email, name, description, qty, image));
     }
 
     @PutMapping(value = "/{id}", consumes = {"multipart/form-data"})
@@ -57,16 +87,19 @@ public class ProductController {
             @RequestParam(required = false) String description,
             @RequestParam(required = false) Integer qty,
             @RequestPart(required = false) MultipartFile image) throws Exception {
-        return toDto(svc.updateProduct(id, name, description, qty, image));
+        String email = getCurrentUserEmail();
+        return toDto(svc.updateProduct(id, email, name, description, qty, image));
     }
 
     @PatchMapping("/{id}/qty")
     public ProductResponse changeQty(@PathVariable String id, @RequestParam int delta) throws Exception {
-        return toDto(svc.changeQty(id, delta));
+        String email = getCurrentUserEmail();
+        return toDto(svc.changeQty(id, email, delta));
     }
 
     @DeleteMapping("/{id}")
     public void delete(@PathVariable String id) {
-        svc.deleteProduct(id);
+        String email = getCurrentUserEmail();
+        svc.deleteProduct(id, email);
     }
 }

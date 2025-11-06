@@ -34,9 +34,7 @@ function LoginPage() {
 
       if (response.ok) {
         const data = await response.json();
-        // Store the JWT token
-        // backend returns { accessToken } -- support both keys for compatibility
-        const token = data.token || data.accessToken || (data.accessToken === undefined ? null : data.accessToken);
+        const token = data.token || data.accessToken;
         if (token) {
           localStorage.setItem('token', token);
         }

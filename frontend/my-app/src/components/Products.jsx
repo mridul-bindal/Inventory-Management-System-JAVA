@@ -25,12 +25,14 @@ export default function Products() {
         setError(null);
         const data = await fetchProducts(query);
         if (mounted) {
-          setProducts(data);
+          // Ensure data is an array
+          setProducts(Array.isArray(data) ? data : []);
         }
       } catch (err) {
         console.error("Failed to fetch products:", err);
         if (mounted) {
-          setError(err.message);
+          setError(err.message || "Failed to load products. Please check if the backend is running.");
+          setProducts([]); // Clear products on error
         }
       } finally {
         if (mounted) {
@@ -39,7 +41,9 @@ export default function Products() {
       }
     }
     loadProducts();
-    return () => (mounted = false);
+    return () => {
+      mounted = false;
+    };
   }, [query]);
 
   // preview image when user selects a file
@@ -90,7 +94,15 @@ export default function Products() {
         qty: initialQty,
         imageFile
       });
-      setProducts((p) => [created, ...p.filter((x) => x.id !== optimisticProduct.id)]);
+      // Replace optimistic product with real one from server
+      if (created && created.id) {
+        setProducts((p) => [created, ...p.filter((x) => x.id !== optimisticProduct.id)]);
+      } else {
+        // If response is invalid, remove optimistic and refetch
+        setProducts((p) => p.filter((x) => x.id !== optimisticProduct.id));
+        const data = await fetchProducts(query);
+        setProducts(Array.isArray(data) ? data : []);
+      }
     } catch (err) {
       setProducts((p) => p.filter((x) => x.id !== optimisticProduct.id));
       alert("Failed to create product: " + err.message);
@@ -173,6 +185,19 @@ export default function Products() {
               />
             </div>
           </div>
+
+          {error && (
+            <div className="error-message" style={{
+              color: 'red',
+              padding: '10px',
+              marginBottom: '10px',
+              backgroundColor: '#fff3f3',
+              border: '1px solid #ffcdd2',
+              borderRadius: '4px'
+            }}>
+              Error: {error}
+            </div>
+          )}
 
           <div className="products-grid">
             {/* Left: Add Product Form */}
