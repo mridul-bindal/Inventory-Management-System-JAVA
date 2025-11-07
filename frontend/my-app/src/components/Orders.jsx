@@ -258,33 +258,62 @@ export default function Orders() {
   }
 
   async function handleEdit(id) {
-    const o = orders.find(x => x.id === id);
-    if (!o) return;
+    const o = orders.find(x => x.id === id || x._id === id);
+    if (!o) {
+      alert("Order not found");
+      return;
+    }
     
     // Use MongoDB _id if available, otherwise use orderCode/id
     const orderIdToUpdate = o._id || id;
     
-    const newCustomer = prompt("Customer name", o.customer);
+    const newCustomer = prompt("Customer name", o.customer || "");
     if (newCustomer === null) return;
-    const newDestination = prompt("Destination", o.destination);
+    if (!newCustomer.trim()) {
+      alert("Customer name cannot be empty");
+      return;
+    }
+    
+    const newDestination = prompt("Destination", o.destination || "");
     if (newDestination === null) return;
-    const newPayment = prompt("Payment (Cash/NEFT/RTGS/UPI)", o.payment) || o.payment;
-    const newStatus = prompt("Status (Pending/Completed)", o.status) || o.status;
+    if (!newDestination.trim()) {
+      alert("Destination cannot be empty");
+      return;
+    }
+    
+    const newPayment = prompt("Payment (Cash/NEFT/RTGS/UPI)", o.payment || "Cash") || o.payment || "Cash";
+    const newStatus = prompt("Status (Pending/Completed)", o.status || "Pending") || o.status || "Pending";
+    
     const newCostPer = prompt("Cost per piece (numeric)", String(o.costPer || 0));
     if (newCostPer === null) return;
+    const costPerNum = Number(newCostPer);
+    if (!Number.isFinite(costPerNum) || costPerNum < 0) {
+      alert("Enter valid cost per piece");
+      return;
+    }
     
+    // Ensure we have productId - it's critical for order updates
+    const productIdToUse = o.productId;
+    if (!productIdToUse) {
+      alert("Cannot update order: Product ID is missing. Please delete and recreate the order.");
+      return;
+    }
+    
+    // Create updated order object with all required fields
     const updatedOrder = { 
-      ...o, 
-      customer: newCustomer, 
-      destination: newDestination, 
+      customer: newCustomer.trim(), 
+      destination: newDestination.trim(), 
+      channel: o.channel || "Store name",
       payment: newPayment, 
       status: newStatus, 
-      costPer: Number(newCostPer) || 0,
-      productId: o.productId || null
+      costPer: costPerNum,
+      items: o.items || 1, // Preserve quantity
+      productId: productIdToUse, // Critical: must preserve productId
+      productName: o.productName || null
     };
     
     try {
-      const updated = await updateOrder(orderIdToUpdate, updatedOrder);
+      await updateOrder(orderIdToUpdate, updatedOrder);
       // Reload orders to get fresh data from backend
       const ordersData = await fetchOrders({ q: "", status: "All", payment: "All" });
       setOrders(ordersData);
@@ -292,7 +321,8 @@ export default function Orders() {
       const updatedProducts = await fetchProducts("");
       setProducts(updatedProducts);
     } catch (err) {
-      alert("Failed to update order: " + err.message);
+      console.error("Error updating order:", err);
+      alert("Failed to update order: " + (err.message || "Unknown error. Check console for details."));
     }
   }
 

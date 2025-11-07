@@ -62,19 +62,38 @@ const mapOrderFromBackend = (order) => {
 
 // Helper to map frontend order to backend CreateOrderRequest
 const mapOrderToBackend = (order) => {
+  // Ensure we have a valid productId
+  const productId = order.productId;
+  if (!productId) {
+    throw new Error('Product ID is required for order');
+  }
+  
+  // Ensure we have valid quantity
+  const qty = Number(order.items) || 1;
+  if (qty <= 0) {
+    throw new Error('Order quantity must be greater than 0');
+  }
+  
+  // Ensure we have valid unit price
+  const unitPrice = Number(order.costPer) || 0;
+  if (unitPrice < 0) {
+    throw new Error('Cost per piece cannot be negative');
+  }
+  
   const items = [{
-    productId: order.productId || null,
+    productId: productId,
     productName: order.productName || 'Product', // Will be fetched from backend
-    qty: order.items || 0,
-    unitPrice: order.costPer || 0,
+    qty: qty,
+    unitPrice: unitPrice,
   }];
+  
   return {
-    customerName: order.customer,
-    channel: order.channel,
-    destination: order.destination,
+    customerName: order.customer || '',
+    channel: order.channel || 'Store name',
+    destination: order.destination || '',
     items: items,
-    payment: order.payment,
-    status: order.status,
+    payment: order.payment || 'Cash',
+    status: order.status || 'Pending',
   };
 };
 
@@ -108,18 +127,29 @@ export const createOrder = async (order) => {
 };
 
 export const updateOrder = async (id, order) => {
-  const payload = mapOrderToBackend(order);
-  const response = await fetch(`${API_BASE}/${id}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      ...getAuthHeaders(),
-    },
-    body: JSON.stringify(payload),
-  });
-  if (!response.ok) throw new Error('Failed to update order');
-  const updated = await response.json();
-  return mapOrderFromBackend(updated);
+  try {
+    const payload = mapOrderToBackend(order);
+    
+    const response = await fetch(`${API_BASE}/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify(payload),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(errorData.error || errorData.message || `Failed to update order: ${response.status} ${response.statusText}`);
+    }
+    
+    const updated = await response.json();
+    return mapOrderFromBackend(updated);
+  } catch (error) {
+    console.error('Error updating order:', error);
+    throw error;
+  }
 };
 
 export const deleteOrder = async (id) => {
