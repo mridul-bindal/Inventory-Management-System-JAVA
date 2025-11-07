@@ -142,6 +142,19 @@
   color: #6b7280;
 }
 
+/* profit column */
+.ot-profit {
+  text-align: right !important;
+  font-family: monospace !important;
+  padding-right: 1rem !important;
+  color: #047857; /* Green color for profit */
+}
+
+.ot-profit::before {
+  content: "$";
+  opacity: 0.5;
+}
+
 /* responsive */
 @media (max-width: 900px) {
   .search-wrap input[type="search"] { width: 100%; }

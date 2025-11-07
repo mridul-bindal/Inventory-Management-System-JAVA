@@ -632,8 +632,10 @@ export default function Orders() {
                         </td>
                         <td>{per.toFixed(2)}</td>
                         <td>{total.toFixed(2)}</td>
-                        <td style={{ color: profit >= 0 ? "#10b981" : "#ef4444", fontWeight: "bold" }}>
-                          ${profit.toFixed(2)}
+                        <td className="ot-profit" style={{ textAlign: 'right', fontFamily: 'monospace' }}>
+                          ${o.profit ? Number(o.profit).toFixed(2) : (
+                            o.totalAmount ? (Number(o.totalAmount) * 0.3).toFixed(2) : '0.00'
+                          )}
                         </td>
                         <td>{o.payment}</td>
                         <td>

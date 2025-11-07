@@ -9,29 +9,53 @@ const getAuthHeaders = () => {
 const mapOrderFromBackend = (order) => {
   const items = order.items || [];
   const totalItems = order.itemsCount || 0;
+  
   // Get unit price from first item if available, otherwise calculate from total
   const costPer = items.length > 0 && items[0].unitPrice 
     ? items[0].unitPrice 
     : (totalItems > 0 ? (order.totalAmount || 0) / totalItems : 0);
-  const dateStr = order.date ? new Date(order.date).toLocaleDateString('en-US') : '';
-  // Get profit from totalProfit (preferred) or from first item's profit
-  const profit = order.totalProfit !== undefined && order.totalProfit !== null
-    ? order.totalProfit 
-    : (items.length > 0 && items[0].profit !== undefined && items[0].profit !== null 
-        ? items[0].profit 
-        : 0);
+  
+  // Calculate profit - handle BigDecimal which might come as number, string, or MongoDB format
+  let totalProfit = 0;
+  if (order.totalProfit !== undefined && order.totalProfit !== null) {
+    // Handle different BigDecimal serialization formats
+    if (typeof order.totalProfit === 'object' && order.totalProfit !== null) {
+      // MongoDB might serialize BigDecimal as { $numberDecimal: "123.45" }
+      totalProfit = parseFloat(order.totalProfit.$numberDecimal || order.totalProfit.toString() || '0') || 0;
+    } else if (typeof order.totalProfit === 'string') {
+      totalProfit = parseFloat(order.totalProfit) || 0;
+    } else {
+      totalProfit = Number(order.totalProfit) || 0;
+    }
+  } else if (items.length > 0) {
+    // Fallback: Calculate profit from items if totalProfit is not available (for old orders)
+    totalProfit = items.reduce((sum, item) => {
+      let itemProfit = 0;
+      if (item.profit !== undefined && item.profit !== null) {
+        if (typeof item.profit === 'object' && item.profit !== null) {
+          itemProfit = parseFloat(item.profit.$numberDecimal || item.profit.toString() || '0') || 0;
+        } else {
+          itemProfit = typeof item.profit === 'string' ? parseFloat(item.profit) : Number(item.profit) || 0;
+        }
+      }
+      return sum + itemProfit;
+    }, 0);
+  }
+
   return {
     id: order.orderCode || order.id,
     _id: order.id, // Store MongoDB ID for updates
-    date: dateStr,
+    date: order.date ? new Date(order.date).toLocaleDateString('en-US') : '',
     customer: order.customerName || '',
     channel: order.channel || '',
     destination: order.destination || '',
     items: totalItems,
-    costPer: costPer,
+    costPer: typeof costPer === 'object' 
+      ? parseFloat(costPer.$numberDecimal || costPer.toString() || '0').toFixed(2)
+      : Number(costPer || 0).toFixed(2),
     payment: order.payment || '',
     status: order.status || '',
-    profit: profit,
+    profit: totalProfit, // Return as number, will be formatted in UI
     productId: items.length > 0 ? items[0].productId : null,
   };
 };

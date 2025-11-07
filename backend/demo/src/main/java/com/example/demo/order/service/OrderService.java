@@ -94,13 +94,15 @@ public class OrderService {
             BigDecimal total = unitPrice.multiply(BigDecimal.valueOf(qty));
             oi.setTotalPrice(total);
             
-            // Calculate profit: (selling price - buying cost) * quantity
-            // Profit = (unitPrice - buyingCost) * qty
-            // Ensure we have valid values for profit calculation
-            if (qty > 0 && unitPrice.compareTo(BigDecimal.ZERO) > 0) {
-                BigDecimal profit = unitPrice
-                        .subtract(buyingCost)
-                        .multiply(BigDecimal.valueOf(qty));
+            // Calculate net profit: (selling price per piece - buying cost per piece) * quantity
+            // Net Profit = (unitPrice - buyingCost) * qty
+            // ALWAYS calculate profit if quantity > 0 to ensure it's saved to database
+            if (qty > 0) {
+                // Ensure buyingCost is never null
+                BigDecimal safeBuyingCost = buyingCost != null ? buyingCost : BigDecimal.ZERO;
+                // Calculate profit per unit first, then multiply by quantity
+                BigDecimal profitPerUnit = unitPrice.subtract(safeBuyingCost);
+                BigDecimal profit = profitPerUnit.multiply(BigDecimal.valueOf(qty));
                 oi.setProfit(profit);
             } else {
                 oi.setProfit(BigDecimal.ZERO);
@@ -116,11 +118,12 @@ public class OrderService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         o.setTotalAmount(totalAmount);
         
-        // Calculate total profit
+        // Calculate total profit - ALWAYS set this field to ensure it's saved to database
         BigDecimal totalProfit = items.stream()
                 .map(i -> i.getProfit() == null ? BigDecimal.ZERO : i.getProfit())
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        o.setTotalProfit(totalProfit);
+        // Always set totalProfit, even if it's zero, to ensure the field exists in database
+        o.setTotalProfit(totalProfit != null ? totalProfit : BigDecimal.ZERO);
         
         o.setCreatedAt(Instant.now());
         o.setUpdatedAt(Instant.now());
@@ -219,12 +222,13 @@ public class OrderService {
                 
                 oi.setTotalPrice(unitPrice.multiply(BigDecimal.valueOf(qty)));
                 
-                // Calculate profit: (selling price - buying cost) * quantity
-                // Ensure we have valid values for profit calculation
-                if (qty > 0 && unitPrice.compareTo(BigDecimal.ZERO) > 0) {
-                    BigDecimal profit = unitPrice
-                            .subtract(buyingCost)
-                            .multiply(BigDecimal.valueOf(qty));
+                // Calculate net profit: (selling price per piece - buying cost per piece) * quantity
+                // ALWAYS calculate profit if quantity > 0 to ensure it's saved to database
+                if (qty > 0) {
+                    // Ensure buyingCost is never null
+                    BigDecimal safeBuyingCost = buyingCost != null ? buyingCost : BigDecimal.ZERO;
+                    BigDecimal profitPerUnit = unitPrice.subtract(safeBuyingCost);
+                    BigDecimal profit = profitPerUnit.multiply(BigDecimal.valueOf(qty));
                     oi.setProfit(profit);
                 } else {
                     oi.setProfit(BigDecimal.ZERO);
@@ -239,11 +243,12 @@ public class OrderService {
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
             o.setTotalAmount(totalAmount);
             
-            // Calculate total profit
+            // Calculate total profit - ALWAYS set this field to ensure it's saved to database
             BigDecimal totalProfit = items.stream()
                     .map(i -> i.getProfit() == null ? BigDecimal.ZERO : i.getProfit())
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
-            o.setTotalProfit(totalProfit);
+            // Always set totalProfit, even if it's zero, to ensure the field exists in database
+            o.setTotalProfit(totalProfit != null ? totalProfit : BigDecimal.ZERO);
         }
 
         o.setUpdatedAt(Instant.now());
@@ -311,12 +316,13 @@ public class OrderService {
         // Recalculate total price (selling price * quantity)
         it.setTotalPrice(unitPrice.multiply(BigDecimal.valueOf(newQty)));
         
-        // Recalculate profit: (selling price - buying cost) * quantity
-        // Ensure we have valid values for profit calculation
-        if (newQty > 0 && unitPrice.compareTo(BigDecimal.ZERO) > 0) {
-            BigDecimal profit = unitPrice
-                    .subtract(buyingCost)
-                    .multiply(BigDecimal.valueOf(newQty));
+        // Recalculate net profit: (selling price per piece - buying cost per piece) * quantity
+        // ALWAYS calculate profit if quantity > 0 to ensure it's saved to database
+        if (newQty > 0) {
+            // Ensure buyingCost is never null
+            BigDecimal safeBuyingCost = buyingCost != null ? buyingCost : BigDecimal.ZERO;
+            BigDecimal profitPerUnit = unitPrice.subtract(safeBuyingCost);
+            BigDecimal profit = profitPerUnit.multiply(BigDecimal.valueOf(newQty));
             it.setProfit(profit);
         } else {
             it.setProfit(BigDecimal.ZERO);
@@ -329,11 +335,12 @@ public class OrderService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         o.setTotalAmount(totalAmount);
         
-        // Recalculate total profit
+        // Recalculate total profit - ALWAYS set this field to ensure it's saved to database
         BigDecimal totalProfit = items.stream()
                 .map(i -> i.getProfit() == null ? BigDecimal.ZERO : i.getProfit())
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        o.setTotalProfit(totalProfit);
+        // Always set totalProfit, even if it's zero, to ensure the field exists in database
+        o.setTotalProfit(totalProfit != null ? totalProfit : BigDecimal.ZERO);
         
         o.setUpdatedAt(Instant.now());
         return repo.save(o);
