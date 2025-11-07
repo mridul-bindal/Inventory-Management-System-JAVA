@@ -71,6 +71,7 @@ export const fetchProducts = async (query = '') => {
     // If unauthorized, clear token and redirect to login
     if (error.message.includes('403') || error.message.includes('401') || error.message.includes('forbidden')) {
       localStorage.removeItem('token');
+      localStorage.removeItem('userEmail');
       window.location.href = '/';
     }
     throw error;

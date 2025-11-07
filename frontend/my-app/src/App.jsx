@@ -6,7 +6,7 @@ import Dashboard from "./components/Dashboard.jsx";
 import Orders from "./components/Orders.jsx";
 import Products from "./components/Products.jsx";
 import SalesReport from "./components/Sales.jsx";
-import Users from "./components/Users.jsx";
+import Owners from "./components/Owners.jsx";
 function App() {
   return (
     <BrowserRouter>
@@ -17,7 +17,7 @@ function App() {
         <Route path="/Orders" element={<Orders />} />
         <Route path="/Products" element={<Products/>} />
         <Route path="/Sales" element={<SalesReport/>} />
-        <Route path="/Users" element={<Users/>} />
+        <Route path="/Owners" element={<Owners/>} />
       </Routes>
     </BrowserRouter>
   );

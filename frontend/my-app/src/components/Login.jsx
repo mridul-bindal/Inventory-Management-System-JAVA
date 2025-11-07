@@ -38,6 +38,10 @@ function LoginPage() {
         if (token) {
           localStorage.setItem('token', token);
         }
+        // Store user email for authorization checks
+        if (data.user && data.user.email) {
+          localStorage.setItem('userEmail', data.user.email);
+        }
         navigate('/Dashboard');
       } else {
         const errorData = await response.json();

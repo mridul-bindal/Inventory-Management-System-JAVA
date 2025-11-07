@@ -37,6 +37,10 @@ public class ProductController {
         throw new RuntimeException("User not authenticated");
     }
 
+    private boolean isOwner(String email) {
+        return "owner@gmail.com".equalsIgnoreCase(email);
+    }
+
     private ProductResponse toDto(Product p) {
         ProductResponse r = new ProductResponse();
         r.setId(p.getId());
@@ -58,10 +62,19 @@ public class ProductController {
     @GetMapping
     public List<ProductResponse> getAll(@RequestParam(required = false) String q) {
         String email = getCurrentUserEmail();
-        // Return only products for the current user
-        List<Product> products = (q == null || q.isBlank()) 
-            ? svc.getAllProductsByEmail(email) 
-            : svc.searchProducts(email, q);
+        // Owner can see all products, other users see only their own
+        List<Product> products;
+        if (isOwner(email)) {
+            // Owner sees all products
+            products = (q == null || q.isBlank()) 
+                ? svc.getAllProducts() 
+                : svc.searchProducts(q);
+        } else {
+            // Regular users see only their products
+            products = (q == null || q.isBlank()) 
+                ? svc.getAllProductsByEmail(email) 
+                : svc.searchProducts(email, q);
+        }
         return products.stream().map(this::toDto).collect(Collectors.toList());
     }
 
@@ -69,7 +82,11 @@ public class ProductController {
     @GetMapping("/{id}")
     public ProductResponse getOne(@PathVariable String id) {
         String email = getCurrentUserEmail();
-        return toDto(svc.getProductByIdAndEmail(id, email));
+        // Owner can access any product, other users only their own
+        Product product = isOwner(email) 
+            ? svc.getProductById(id) 
+            : svc.getProductByIdAndEmail(id, email);
+        return toDto(product);
     }
 
     @PostMapping(consumes = {"multipart/form-data"})
@@ -94,18 +111,21 @@ public class ProductController {
             @RequestParam(required = false) java.math.BigDecimal buyingCost,
             @RequestPart(required = false) MultipartFile image) throws Exception {
         String email = getCurrentUserEmail();
+        // Owner can update any product, other users only their own (checked in service)
         return toDto(svc.updateProduct(id, email, name, description, qty, productId, buyingCost, image));
     }
 
     @PatchMapping("/{id}/qty")
     public ProductResponse changeQty(@PathVariable String id, @RequestParam int delta) throws Exception {
         String email = getCurrentUserEmail();
+        // Owner can change quantity of any product, other users only their own (checked in service)
         return toDto(svc.changeQty(id, email, delta));
     }
 
     @DeleteMapping("/{id}")
     public void delete(@PathVariable String id) {
         String email = getCurrentUserEmail();
+        // Owner can delete any product, other users only their own (checked in service)
         svc.deleteProduct(id, email);
     }
 }

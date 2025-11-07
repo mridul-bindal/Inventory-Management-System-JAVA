@@ -2,6 +2,7 @@
 import React from "react";
 import "../styles/Nav.css";
 import { Link } from "react-router-dom";
+import { isOwner } from "../utils/auth";
 
 export default function Nav() {
   return (
@@ -29,11 +30,13 @@ export default function Nav() {
               Orders
             </Link>
           </li>
-          <li>
-            <Link to="/Users" className="Login-redirection">
-              Users
-            </Link>
-          </li>
+          {isOwner() && (
+            <li>
+              <Link to="/Owners" className="Login-redirection">
+                Owners
+              </Link>
+            </li>
+          )}
           
         </ul>
       </nav>
