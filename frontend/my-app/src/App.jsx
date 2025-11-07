@@ -1,5 +1,6 @@
 import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Landing from "./components/Landing.jsx";
 import LoginPage from "./components/Login.jsx";
 import RegisterPage from "./components/Register.jsx";
 import Dashboard from "./components/Dashboard.jsx";
@@ -11,7 +12,8 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<LoginPage />} />
+        <Route path="/" element={<Landing />} />
+        <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/Dashboard" element={<Dashboard />} />
         <Route path="/Orders" element={<Orders />} />
