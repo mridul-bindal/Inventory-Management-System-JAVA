@@ -46,20 +46,30 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    public Product createProduct(String email, String name, String description, Integer qty, MultipartFile image) throws IOException {
+    public Product createProduct(String email, String productId, String name, String description, Integer qty, java.math.BigDecimal buyingCost, MultipartFile image) throws IOException {
         String base64 = toBase64(image);
-        Product p = new Product(email, name, description, qty == null ? 0 : qty, base64);
+        Product p = new Product(email, productId, name, description, qty == null ? 0 : qty, buyingCost, base64);
         return repo.save(p);
     }
 
     @Override
-    public Product updateProduct(String id, String email, String name, String description, Integer qty, MultipartFile image) throws IOException {
+    public Product updateProduct(String id, String email, String name, String description, Integer qty, String productId, java.math.BigDecimal buyingCost, MultipartFile image) throws IOException {
         Product p = getProductByIdAndEmail(id, email);
         if (name != null) p.setName(name);
         if (description != null) p.setDescription(description);
         if (qty != null) p.setQty(qty);
+        if (productId != null) p.setProductId(productId);
+        if (buyingCost != null) p.setBuyingCost(buyingCost);
         if (image != null) p.setImageBase64(toBase64(image));
         return repo.save(p);
+    }
+
+    @Override
+    public Product getProductByProductId(String productId, String email) {
+        return repo.findByEmail(email).stream()
+            .filter(p -> productId != null && productId.equals(p.getProductId()))
+            .findFirst()
+            .orElseThrow(() -> new RuntimeException("Product not found with productId: " + productId));
     }
 
     @Override
@@ -88,6 +98,13 @@ public class ProductServiceImpl implements ProductService {
         int newQty = Math.max(0, p.getQty() + delta);
         p.setQty(newQty);
         return repo.save(p);
+    }
+
+    @Override
+    public Product updateProductQuantity(String productId, String email, int newQuantity) throws Exception {
+        Product product = getProductByProductId(productId, email);
+        product.setQty(newQuantity);
+        return repo.save(product);
     }
 
     private String toBase64(MultipartFile file) throws IOException {

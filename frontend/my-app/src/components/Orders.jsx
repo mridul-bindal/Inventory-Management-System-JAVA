@@ -5,6 +5,7 @@ import "../styles/Orders.css"; // keep general layout + cards + tables
 import Nav from "../staticComponents/NavBar";
 import Header from "../staticComponents/Header";
 import { fetchOrders, createOrder, updateOrder, deleteOrder, changeOrderQty } from "../api/orders";
+import { fetchProducts } from "../api/products";
 
 const STORAGE_KEY = "ims_orders_v1";
 
@@ -46,19 +47,28 @@ export default function Orders() {
   const [customer, setCustomer] = useState("");
   const [channel, setChannel] = useState("Store name");
   const [destination, setDestination] = useState("");
+  const [productId, setProductId] = useState("");
+  const [productNameInput, setProductNameInput] = useState("");
   const [items, setItems] = useState(1);
   const [costPer, setCostPer] = useState(0);
   const [payment, setPayment] = useState("Cash");
   const [status, setStatus] = useState("Pending");
+  const [maxQuantity, setMaxQuantity] = useState(null);
+  const [productName, setProductName] = useState("");
+  const [products, setProducts] = useState([]);
 
-  // Load orders from API on mount
+  // Load orders and products from API on mount
   useEffect(() => {
-    const loadOrders = async () => {
+    const loadData = async () => {
       setLoading(true);
       setError(null);
       try {
-        const data = await fetchOrders({ q: "", status: "All", payment: "All" });
-        setOrders(data);
+        const ordersData = await fetchOrders({ q: "", status: "All", payment: "All" });
+        setOrders(ordersData);
+        
+        // Load products for validation
+        const productsData = await fetchProducts("");
+        setProducts(productsData);
       } catch (err) {
         setError(err.message);
         // Fallback to localStorage if API fails
@@ -67,7 +77,7 @@ export default function Orders() {
         setLoading(false);
       }
     };
-    loadOrders();
+    loadData();
   }, []);
 
   // persist to localStorage when orders change (for offline fallback)
@@ -82,10 +92,100 @@ export default function Orders() {
     setCustomer("");
     setChannel("Store name");
     setDestination("");
+    setProductId("");
+    setProductNameInput("");
     setItems(1);
     setCostPer(0);
     setPayment("Cash");
     setStatus("Pending");
+    setMaxQuantity(null);
+    setProductName("");
+  }
+
+  // Handle product name input change - search and auto-fill product ID
+  function handleProductNameInputChange(value) {
+    setProductNameInput(value);
+    
+    if (!value || !value.trim()) {
+      // Clear product ID and validation if name is cleared
+      setProductId("");
+      setMaxQuantity(null);
+      setProductName("");
+      return;
+    }
+
+    // Search for product by name (case-insensitive)
+    const product = products.find(p => 
+      p.name && p.name.trim().toLowerCase() === value.trim().toLowerCase()
+    );
+    
+    if (product) {
+      // Product found - auto-fill product ID and set validation info
+      setProductId(product.productId || "");
+      setMaxQuantity(product.qty || 0);
+      setProductName(product.name || "");
+      
+      // If current items exceed max, adjust it
+      if (items > (product.qty || 0)) {
+        setItems(product.qty || 0);
+        alert(`Maximum available quantity is ${product.qty}. Quantity adjusted.`);
+      }
+    } else {
+      // Product not found - clear product ID but keep name input
+      // User can manually enter product ID
+      setProductId("");
+      setMaxQuantity(null);
+      setProductName("");
+    }
+  }
+
+  // Handle product ID input change (just update state, don't validate yet)
+  function handleProductIdInputChange(value) {
+    setProductId(value);
+    // Clear validation info when user is typing
+    if (!value || !value.trim()) {
+      setMaxQuantity(null);
+      setProductName("");
+    }
+  }
+
+  // Validate product ID when user leaves the field (onBlur)
+  function handleProductIdBlur() {
+    const value = productId.trim();
+    
+    if (!value) {
+      setMaxQuantity(null);
+      setProductName("");
+      return;
+    }
+
+    try {
+      // Check if product exists in the products list
+      const product = products.find(p => p.productId && p.productId.trim().toLowerCase() === value.toLowerCase());
+      
+      if (!product) {
+        alert(`Product with ID "${value}" is not present in the database. Please add the product first.`);
+        setProductId("");
+        setMaxQuantity(null);
+        setProductName("");
+        setProductNameInput("");
+        return;
+      }
+
+      // Product exists, set max quantity and product name
+      setMaxQuantity(product.qty || 0);
+      setProductName(product.name || "");
+      setProductNameInput(product.name || "");
+      
+      // If current items exceed max, adjust it
+      if (items > (product.qty || 0)) {
+        setItems(product.qty || 0);
+        alert(`Maximum available quantity is ${product.qty}. Quantity adjusted.`);
+      }
+    } catch (err) {
+      console.error("Error validating product:", err);
+      alert("Error validating product. Please try again.");
+    }
   }
 
   // add order
@@ -93,6 +193,26 @@ export default function Orders() {
     e.preventDefault();
     if (!customer.trim()) return alert("Please enter customer name");
     if (!destination.trim()) return alert("Please enter destination");
+    if (!productId.trim()) return alert("Please enter Product ID");
+    
+    // Validate product exists
+    const product = products.find(p => p.productId && p.productId.trim().toLowerCase() === productId.trim().toLowerCase());
+    if (!product) {
+      alert(`Product with ID "${productId}" is not present in the database. Please add the product first.`);
+      return;
+    }
+
+    // Validate quantity
+    const orderQty = Number(items) || 0;
+    if (orderQty <= 0) {
+      alert("Please enter a valid quantity (greater than 0)");
+      return;
+    }
+    if (orderQty > (product.qty || 0)) {
+      alert(`Insufficient quantity. Maximum available: ${product.qty}`);
+      return;
+    }
+
     const per = Number(costPer) || 0;
     const newOrder = {
       id: orderId || generateOrderId(),
@@ -104,13 +224,17 @@ export default function Orders() {
       customer: customer.trim(),
       channel,
       destination: destination.trim(),
-      items: Number(items) || 0,
+      productId: productId.trim(),
+      items: orderQty,
       costPer: per,
       payment,
       status,
     };
     try {
       await createOrder(newOrder);
+      // Reload products to get updated quantities
+      const updatedProducts = await fetchProducts("");
+      setProducts(updatedProducts);
       setOrders(prev => [newOrder, ...prev]);
       resetForm();
       setFormOpen(false);
@@ -123,7 +247,11 @@ export default function Orders() {
     if (!confirm("Delete this order?")) return;
     try {
       await deleteOrder(id);
-      setOrders(prev => prev.filter(o => o.id !== id));
+      // Reload orders and products after deletion
+      const ordersData = await fetchOrders({ q: "", status: "All", payment: "All" });
+      setOrders(ordersData);
+      const updatedProducts = await fetchProducts("");
+      setProducts(updatedProducts);
     } catch (err) {
       alert("Failed to delete order: " + err.message);
     }
@@ -132,6 +260,10 @@ export default function Orders() {
   async function handleEdit(id) {
     const o = orders.find(x => x.id === id);
     if (!o) return;
+    
+    // Use MongoDB _id if available, otherwise use orderCode/id
+    const orderIdToUpdate = o._id || id;
+    
     const newCustomer = prompt("Customer name", o.customer);
     if (newCustomer === null) return;
     const newDestination = prompt("Destination", o.destination);
@@ -140,10 +272,25 @@ export default function Orders() {
     const newStatus = prompt("Status (Pending/Completed)", o.status) || o.status;
     const newCostPer = prompt("Cost per piece (numeric)", String(o.costPer || 0));
     if (newCostPer === null) return;
-    const updatedOrder = { ...o, customer: newCustomer, destination: newDestination, payment: newPayment, status: newStatus, costPer: Number(newCostPer) || 0 };
+    
+    const updatedOrder = { 
+      ...o, 
+      customer: newCustomer, 
+      destination: newDestination, 
+      payment: newPayment, 
+      status: newStatus, 
+      costPer: Number(newCostPer) || 0,
+      productId: o.productId || null
+    };
+    
     try {
-      await updateOrder(id, updatedOrder);
-      setOrders(prev => prev.map(x => x.id === id ? updatedOrder : x));
+      const updated = await updateOrder(orderIdToUpdate, updatedOrder);
+      // Reload orders to get fresh data from backend
+      const ordersData = await fetchOrders({ q: "", status: "All", payment: "All" });
+      setOrders(ordersData);
+      // Also reload products to reflect any quantity changes
+      const updatedProducts = await fetchProducts("");
+      setProducts(updatedProducts);
     } catch (err) {
       alert("Failed to update order: " + err.message);
     }
@@ -153,14 +300,27 @@ export default function Orders() {
     const order = orders.find(o => o.id === id);
     if (!order) return;
     const newItems = Math.max(0, Number(order.items) + Number(delta));
+    const orderIdToUpdate = order._id || id;
     try {
       // backend expects item index and delta (change amount). The frontend stores only
       // a total items count (items); most demo orders use a single item entry, so
       // we send index 0 and the delta to increment/decrement quantity on server.
-      await changeOrderQty(id, 0, delta);
-      setOrders(prev => prev.map(o => o.id === id ? { ...o, items: newItems } : o));
+      await changeOrderQty(orderIdToUpdate, 0, delta);
+      // Reload orders to get updated data including profit
+      const ordersData = await fetchOrders({ q: "", status: "All", payment: "All" });
+      setOrders(ordersData);
+      // Reload products to reflect quantity changes in products section
+      const updatedProducts = await fetchProducts("");
+      setProducts(updatedProducts);
     } catch (err) {
       alert("Failed to update quantity: " + err.message);
+      // Reload products even on error to ensure sync
+      try {
+        const updatedProducts = await fetchProducts("");
+        setProducts(updatedProducts);
+      } catch (e) {
+        console.error("Failed to reload products:", e);
+      }
     }
   }
 
@@ -279,8 +439,72 @@ export default function Orders() {
                 </div>
 
                 <div>
-                  <label className="input-label">Items</label>
-                  <input className="input-field" type="number" min="0" value={items} onChange={e => setItems(e.target.value)} />
+                  <label className="input-label">Product Name</label>
+                  <input 
+                    className="input-field" 
+                    value={productNameInput} 
+                    onChange={e => handleProductNameInputChange(e.target.value)}
+                    placeholder="Enter product name to auto-fill ID"
+                    list="product-names"
+                  />
+                  <datalist id="product-names">
+                    {products.map(p => (
+                      <option key={p.id} value={p.name} />
+                    ))}
+                  </datalist>
+                  {productName && (
+                    <small style={{ color: "#10b981", fontSize: "12px", display: "block", marginTop: "4px" }}>
+                      ✓ Product found: {productName}
+                    </small>
+                  )}
+                </div>
+
+                <div>
+                  <label className="input-label">Product ID *</label>
+                  <input 
+                    className="input-field" 
+                    value={productId} 
+                    onChange={e => handleProductIdInputChange(e.target.value)}
+                    onBlur={handleProductIdBlur}
+                    placeholder="e.g., PROD-001 (auto-filled if name matches)"
+                    required
+                    style={{ 
+                      backgroundColor: productId ? "#f0f9ff" : "white",
+                      borderColor: productId ? "#3b82f6" : undefined
+                    }}
+                  />
+                  {maxQuantity !== null && (
+                    <small style={{ color: "#6366f1", fontSize: "12px", display: "block", marginTop: "4px" }}>
+                      Max available: {maxQuantity}
+                    </small>
+                  )}
+                </div>
+
+                <div>
+                  <label className="input-label">Quantity *</label>
+                  <input 
+                    className="input-field" 
+                    type="number" 
+                    min="1" 
+                    max={maxQuantity !== null ? maxQuantity : undefined}
+                    value={items} 
+                    onChange={e => {
+                      const val = Number(e.target.value);
+                      if (maxQuantity !== null && val > maxQuantity) {
+                        alert(`Maximum quantity is ${maxQuantity}`);
+                        setItems(maxQuantity);
+                      } else {
+                        setItems(e.target.value);
+                      }
+                    }}
+                    required
+                    disabled={!productId || maxQuantity === null}
+                  />
+                  {maxQuantity !== null && (
+                    <small style={{ color: "#ef4444", fontSize: "12px", display: "block", marginTop: "4px" }}>
+                      {items > maxQuantity ? `Cannot exceed ${maxQuantity}` : ""}
+                    </small>
+                  )}
                 </div>
 
                 <div>
@@ -374,6 +598,7 @@ export default function Orders() {
                   <th>Items</th>
                   <th>Cost/pc</th>
                   <th>Total</th>
+                  <th>Net Profit</th>
                   <th>Payment</th>
                   <th>Status</th>
                   <th>Actions</th>
@@ -383,12 +608,13 @@ export default function Orders() {
               <tbody>
                 {filtered.length === 0 ? (
                   <tr className="no-results">
-                    <td colSpan="12">No orders found</td>
+                    <td colSpan="13">No orders found</td>
                   </tr>
                 ) : (
                   filtered.map((o, i) => {
                     const per = Number(o.costPer) || 0;
                     const total = (Number(o.items) || 0) * per;
+                    const profit = Number(o.profit) || 0;
                     return (
                       <tr key={o.id + i}>
                         <td><input type="checkbox" /></td>
@@ -406,14 +632,17 @@ export default function Orders() {
                         </td>
                         <td>{per.toFixed(2)}</td>
                         <td>{total.toFixed(2)}</td>
+                        <td style={{ color: profit >= 0 ? "#10b981" : "#ef4444", fontWeight: "bold" }}>
+                          ${profit.toFixed(2)}
+                        </td>
                         <td>{o.payment}</td>
                         <td>
                           <span className={`status-badge status-${(o.status || "").toLowerCase()}`}>{o.status}</span>
                         </td>
                         <td>
                           <div style={{ display: "flex", gap: 8 }}>
-                            <button className="btn-sm" onClick={() => handleEdit(o.id)}>Edit</button>
-                            <button className="btn-danger" onClick={() => handleDelete(o.id)}>Delete</button>
+                            <button className="btn-sm" onClick={() => handleEdit(o._id || o.id)}>Edit</button>
+                            <button className="btn-danger" onClick={() => handleDelete(o._id || o.id)}>Delete</button>
                           </div>
                         </td>
                       </tr>

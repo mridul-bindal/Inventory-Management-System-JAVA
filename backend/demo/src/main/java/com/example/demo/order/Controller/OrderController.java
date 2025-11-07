@@ -1,9 +1,13 @@
 package com.example.demo.order.Controller;
 
+import com.example.demo.model.User;
 import com.example.demo.order.dto.CreateOrderRequest;
 import com.example.demo.order.model.Order;
 import com.example.demo.order.service.OrderService;
+import com.example.demo.repository.UserRepository;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -13,7 +17,31 @@ import java.util.Map;
 @RequestMapping("/api/orders")
 public class OrderController {
     private final OrderService svc;
-    public OrderController(OrderService svc) { this.svc = svc; }
+    private final UserRepository userRepository;
+    
+    public OrderController(OrderService svc, UserRepository userRepository) { 
+        this.svc = svc;
+        this.userRepository = userRepository;
+    }
+    
+    private String getCurrentUserEmail() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() != null) {
+            String userId = auth.getPrincipal().toString();
+            User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+            return user.getEmail();
+        }
+        throw new RuntimeException("User not authenticated");
+    }
+    
+    private String getCurrentUserId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() != null) {
+            return auth.getPrincipal().toString();
+        }
+        throw new RuntimeException("User not authenticated");
+    }
 
     @GetMapping
     public ResponseEntity<List<Order>> list(@RequestParam(value="q", required=false) String q,
@@ -37,10 +65,11 @@ public class OrderController {
     }
 
     @PostMapping
-    public ResponseEntity<?> create(@RequestBody CreateOrderRequest req, @RequestHeader(value="X-User-Id", required=false) String userId) {
-        // X-User-Id optional; later get from SecurityContext
+    public ResponseEntity<?> create(@RequestBody CreateOrderRequest req) {
         try {
-            Order o = svc.createOrder(req, userId);
+            String userId = getCurrentUserId();
+            String userEmail = getCurrentUserEmail();
+            Order o = svc.createOrder(req, userId, userEmail);
             return ResponseEntity.ok(o);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", "Failed to add order: " + e.getMessage()));
@@ -55,7 +84,8 @@ public class OrderController {
     @PutMapping("/{id}")
     public ResponseEntity<?> update(@PathVariable String id, @RequestBody CreateOrderRequest req) {
         try {
-            Order o = svc.updateOrder(id, req);
+            String userEmail = getCurrentUserEmail();
+            Order o = svc.updateOrder(id, req, userEmail);
             return ResponseEntity.ok(o);
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
@@ -71,9 +101,12 @@ public class OrderController {
     @PostMapping("/{id}/items/{index}/change")
     public ResponseEntity<?> changeQty(@PathVariable String id, @PathVariable int index, @RequestParam int delta) {
         try {
-            Order o = svc.changeQty(id, index, delta);
+            String userEmail = getCurrentUserEmail();
+            Order o = svc.changeQty(id, index, delta, userEmail);
             return ResponseEntity.ok(o);
         } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (RuntimeException ex) {
             return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
         }
     }

@@ -40,9 +40,11 @@ public class ProductController {
     private ProductResponse toDto(Product p) {
         ProductResponse r = new ProductResponse();
         r.setId(p.getId());
+        r.setProductId(p.getProductId());
         r.setName(p.getName());
         r.setDescription(p.getDescription());
         r.setQty(p.getQty());
+        r.setBuyingCost(p.getBuyingCost());
         r.setImageBase64(p.getImageBase64());
         r.setCreatedAt(p.getCreatedAt());
         return r;
@@ -75,9 +77,11 @@ public class ProductController {
             @RequestParam String name,
             @RequestParam(required = false) String description,
             @RequestParam(required = false) Integer qty,
+            @RequestParam(required = false) String productId,
+            @RequestParam(required = false) java.math.BigDecimal buyingCost,
             @RequestPart(required = false) MultipartFile image) throws Exception {
         String email = getCurrentUserEmail();
-        return toDto(svc.createProduct(email, name, description, qty, image));
+        return toDto(svc.createProduct(email, productId, name, description, qty, buyingCost, image));
     }
 
     @PutMapping(value = "/{id}", consumes = {"multipart/form-data"})
@@ -86,9 +90,11 @@ public class ProductController {
             @RequestParam(required = false) String name,
             @RequestParam(required = false) String description,
             @RequestParam(required = false) Integer qty,
+            @RequestParam(required = false) String productId,
+            @RequestParam(required = false) java.math.BigDecimal buyingCost,
             @RequestPart(required = false) MultipartFile image) throws Exception {
         String email = getCurrentUserEmail();
-        return toDto(svc.updateProduct(id, email, name, description, qty, image));
+        return toDto(svc.updateProduct(id, email, name, description, qty, productId, buyingCost, image));
     }
 
     @PatchMapping("/{id}/qty")

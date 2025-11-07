@@ -11,6 +11,8 @@ export default function Products() {
   const [name, setName] = useState("");
   const [desc, setDesc] = useState("");
   const [qty, setQty] = useState("");
+  const [productId, setProductId] = useState("");
+  const [buyingCost, setBuyingCost] = useState("");
   const [imageFile, setImageFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [query, setQuery] = useState("");
@@ -61,6 +63,8 @@ export default function Products() {
     setName("");
     setDesc("");
     setQty("");
+    setProductId("");
+    setBuyingCost("");
     setImageFile(null);
     setPreview(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -72,14 +76,19 @@ export default function Products() {
   async function handleAdd(e) {
     e.preventDefault();
     if (!name.trim()) return alert("Please enter product name");
+    if (!productId.trim()) return alert("Please enter product ID");
     const initialQty = Number(qty === "" ? 0 : qty);
     if (!Number.isFinite(initialQty) || initialQty < 0) return alert("Enter valid quantity");
+    const cost = Number(buyingCost === "" ? 0 : buyingCost);
+    if (!Number.isFinite(cost) || cost < 0) return alert("Enter valid buying cost");
 
     const optimisticProduct = {
       id: `temp-${Date.now()}`,
       name: name.trim(),
+      productId: productId.trim(),
       description: desc.trim(),
       qty: initialQty,
+      buyingCost: cost,
       image: preview || null,
       createdAt: new Date().toISOString()
     };
@@ -90,8 +99,10 @@ export default function Products() {
     try {
       const created = await createProduct({
         name: optimisticProduct.name,
+        productId: optimisticProduct.productId,
         description: optimisticProduct.description,
         qty: initialQty,
+        buyingCost: cost,
         imageFile
       });
       // Replace optimistic product with real one from server
@@ -204,19 +215,41 @@ export default function Products() {
             <div className="product-form-card">
               <h3 className="pf-title">Add New Product</h3>
               <form className="product-form" onSubmit={handleAdd}>
-                <label className="pf-label">Product name</label>
-                <input value={name} onChange={(e) => setName(e.target.value)} className="pf-input" />
+                <label className="pf-label">Product ID *</label>
+                <input 
+                  value={productId} 
+                  onChange={(e) => setProductId(e.target.value)} 
+                  className="pf-input" 
+                  placeholder="e.g., PROD-001"
+                  required
+                />
+
+                <label className="pf-label">Product name *</label>
+                <input value={name} onChange={(e) => setName(e.target.value)} className="pf-input" required />
 
                 <label className="pf-label">Description</label>
                 <textarea value={desc} onChange={(e) => setDesc(e.target.value)} className="pf-textarea" rows={3} />
 
-                <label className="pf-label">Quantity</label>
+                <label className="pf-label">Quantity *</label>
                 <input
                   value={qty}
                   onChange={(e) => setQty(e.target.value)}
                   className="pf-input"
                   type="number"
                   min="0"
+                  required
+                />
+
+                <label className="pf-label">Buying Cost *</label>
+                <input
+                  value={buyingCost}
+                  onChange={(e) => setBuyingCost(e.target.value)}
+                  className="pf-input"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  required
                 />
 
                 <label className="pf-label">Photo</label>
@@ -252,9 +285,11 @@ export default function Products() {
                     <thead>
                       <tr>
                         <th>Photo</th>
+                        <th>Product ID</th>
                         <th>Product</th>
                         <th>Description</th>
                         <th>Qty</th>
+                        <th>Buying Cost</th>
                         <th>Actions</th>
                       </tr>
                     </thead>
@@ -268,6 +303,7 @@ export default function Products() {
                               <div className="photo-placeholder">No photo</div>
                             )}
                           </td>
+                          <td className="pt-productId">{p.productId || "N/A"}</td>
                           <td className="pt-name">{p.name}</td>
                           <td className="pt-desc">{p.description}</td>
                           <td className="pt-qty">
@@ -277,6 +313,7 @@ export default function Products() {
                               <button className="qty-btn" onClick={() => changeQty(p.id, +1)}>+</button>
                             </div>
                           </td>
+                          <td className="pt-buyingCost">${p.buyingCost ? parseFloat(p.buyingCost).toFixed(2) : "0.00"}</td>
                           <td className="pt-actions">
                             <button className="btn-sm" onClick={() => handleEdit(p.id)}>Edit</button>
                             <button className="btn-danger" onClick={() => handleDelete(p.id)}>Delete</button>

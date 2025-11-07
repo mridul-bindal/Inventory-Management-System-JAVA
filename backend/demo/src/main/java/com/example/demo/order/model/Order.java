@@ -19,7 +19,8 @@ public class Order {
     private String destination;
     private List<OrderItem> items;
     private Integer itemsCount;
-    private BigDecimal totalAmount;
+    private BigDecimal totalAmount; // total selling amount
+    private BigDecimal totalProfit; // total profit from all items
     private String payment;  // Cash / NEFT / RTGS / UPI
     private String status;   // Pending / Completed / Cancelled
     private Instant createdAt = Instant.now();
@@ -49,6 +50,8 @@ public class Order {
     public void setItemsCount(Integer itemsCount) { this.itemsCount = itemsCount; }
     public BigDecimal getTotalAmount() { return totalAmount; }
     public void setTotalAmount(BigDecimal totalAmount) { this.totalAmount = totalAmount; }
+    public BigDecimal getTotalProfit() { return totalProfit; }
+    public void setTotalProfit(BigDecimal totalProfit) { this.totalProfit = totalProfit; }
     public String getPayment() { return payment; }
     public void setPayment(String payment) { this.payment = payment; }
     public String getStatus() { return status; }

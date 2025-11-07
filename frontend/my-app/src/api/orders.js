@@ -9,10 +9,20 @@ const getAuthHeaders = () => {
 const mapOrderFromBackend = (order) => {
   const items = order.items || [];
   const totalItems = order.itemsCount || 0;
-  const costPer = totalItems > 0 ? (order.totalAmount || 0) / totalItems : 0;
+  // Get unit price from first item if available, otherwise calculate from total
+  const costPer = items.length > 0 && items[0].unitPrice 
+    ? items[0].unitPrice 
+    : (totalItems > 0 ? (order.totalAmount || 0) / totalItems : 0);
   const dateStr = order.date ? new Date(order.date).toLocaleDateString('en-US') : '';
+  // Get profit from totalProfit (preferred) or from first item's profit
+  const profit = order.totalProfit !== undefined && order.totalProfit !== null
+    ? order.totalProfit 
+    : (items.length > 0 && items[0].profit !== undefined && items[0].profit !== null 
+        ? items[0].profit 
+        : 0);
   return {
     id: order.orderCode || order.id,
+    _id: order.id, // Store MongoDB ID for updates
     date: dateStr,
     customer: order.customerName || '',
     channel: order.channel || '',
@@ -21,14 +31,16 @@ const mapOrderFromBackend = (order) => {
     costPer: costPer,
     payment: order.payment || '',
     status: order.status || '',
+    profit: profit,
+    productId: items.length > 0 ? items[0].productId : null,
   };
 };
 
 // Helper to map frontend order to backend CreateOrderRequest
 const mapOrderToBackend = (order) => {
   const items = [{
-    productId: null, // optional
-    productName: 'Default Product', // placeholder
+    productId: order.productId || null,
+    productName: order.productName || 'Product', // Will be fetched from backend
     qty: order.items || 0,
     unitPrice: order.costPer || 0,
   }];

@@ -11,20 +11,24 @@ public class Product {
     @Id
     private String id; // MongoDB _id field (String type by default)
     private String email; // Email of the user who owns this product
+    private String productId; // Unique product identifier (e.g., PROD-001)
     private String name;
     private String description;
     private Integer qty;
+    private java.math.BigDecimal buyingCost; // Cost at which product was bought
     private String imageBase64; // base64 image or URL
     private Instant createdAt = Instant.now();
 
     // --- Constructors ---
     public Product() {}
 
-    public Product(String email, String name, String description, Integer qty, String imageBase64) {
+    public Product(String email, String productId, String name, String description, Integer qty, java.math.BigDecimal buyingCost, String imageBase64) {
         this.email = email;
+        this.productId = productId;
         this.name = name;
         this.description = description;
         this.qty = qty;
+        this.buyingCost = buyingCost;
         this.imageBase64 = imageBase64;
         this.createdAt = Instant.now();
     }
@@ -36,6 +40,9 @@ public class Product {
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
 
+    public String getProductId() { return productId; }
+    public void setProductId(String productId) { this.productId = productId; }
+
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
 
@@ -44,6 +51,9 @@ public class Product {
 
     public Integer getQty() { return qty; }
     public void setQty(Integer qty) { this.qty = qty; }
+
+    public java.math.BigDecimal getBuyingCost() { return buyingCost; }
+    public void setBuyingCost(java.math.BigDecimal buyingCost) { this.buyingCost = buyingCost; }
 
     public String getImageBase64() { return imageBase64; }
     public void setImageBase64(String imageBase64) { this.imageBase64 = imageBase64; }

@@ -16,6 +16,7 @@ public class OrderResponse {
     private List<OrderItem> items;
     private Integer itemsCount;
     private BigDecimal totalAmount;
+    private BigDecimal totalProfit;
     private String payment;
     private String status;
     private Instant createdAt;
@@ -41,6 +42,8 @@ public class OrderResponse {
     public void setItemsCount(Integer itemsCount) { this.itemsCount = itemsCount; }
     public java.math.BigDecimal getTotalAmount() { return totalAmount; }
     public void setTotalAmount(java.math.BigDecimal totalAmount) { this.totalAmount = totalAmount; }
+    public java.math.BigDecimal getTotalProfit() { return totalProfit; }
+    public void setTotalProfit(java.math.BigDecimal totalProfit) { this.totalProfit = totalProfit; }
     public String getPayment() { return payment; }
     public void setPayment(String payment) { this.payment = payment; }
     public String getStatus() { return status; }

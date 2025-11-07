@@ -88,8 +88,10 @@ export const getProductById = async (id) => {
 export const createProduct = async (productData) => {
   const formData = new FormData();
   formData.append('name', productData.name);
+  if (productData.productId) formData.append('productId', productData.productId);
   if (productData.description) formData.append('description', productData.description);
   if (productData.qty !== undefined) formData.append('qty', String(productData.qty));
+  if (productData.buyingCost !== undefined) formData.append('buyingCost', String(productData.buyingCost));
   if (productData.imageFile) formData.append('image', productData.imageFile);
 
   const response = await fetch(API_BASE, {
@@ -103,8 +105,10 @@ export const createProduct = async (productData) => {
 export const updateProduct = async (id, productData) => {
   const formData = new FormData();
   if (productData.name !== undefined) formData.append('name', productData.name);
+  if (productData.productId !== undefined) formData.append('productId', productData.productId);
   if (productData.description !== undefined) formData.append('description', productData.description);
   if (productData.qty !== undefined) formData.append('qty', String(productData.qty));
+  if (productData.buyingCost !== undefined) formData.append('buyingCost', String(productData.buyingCost));
   if (productData.imageFile) formData.append('image', productData.imageFile);
 
   const response = await fetch(`${API_BASE}/${id}`, {
